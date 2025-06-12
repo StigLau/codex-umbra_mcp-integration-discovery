@@ -1,0 +1,63 @@
+# Aider specific
+.aider*
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v3
+
+# LLM/AI related
+.claude*
+.openai*
+.anthropic*
+api_keys.txt
+*_api_key*
+
+# Development databases
+*.db-journal
+*.db-wal
+*.db-shm
+postgres-data/
+mysql-data/
+redis-data/
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Secrets and credentials
+secrets/
+credentials/
+*.pem
+*.key
+*.cert
+*.crt
+
+# Backup files
+*.backup
+*.old
+*.orig
+
+# Lock files (optional - some prefer to commit these)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# poetry.lock
+# Pipfile.lock
+
+# Python specific additions
+instance/
+htmlcov/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+
+# FastAPI specific
+*.db
+alembic.ini
+alembic/versions/
+
+# React/Vite specific
+# Vite build analysis
+stats.html
