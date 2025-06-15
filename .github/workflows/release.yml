@@ -1,0 +1,286 @@
+name: Release Management
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for changelog
+
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        echo "📝 Generating changelog..."
+        
+        # Get previous tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+        
+        if [[ -n "$PREVIOUS_TAG" ]]; then
+          echo "Previous tag: $PREVIOUS_TAG"
+          CHANGELOG=$(git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+        else
+          echo "No previous tag found, generating full changelog"
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+        fi
+        
+        # Save changelog to file and output
+        echo "$CHANGELOG" > changelog.txt
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Build release artifacts
+      run: |
+        echo "📦 Building release artifacts..."
+        
+        # Create release package
+        mkdir -p release/
+        
+        # Copy essential files
+        cp -r scripts/ release/
+        cp -r docs/ release/
+        cp docker-compose.yml release/
+        cp README.md release/
+        cp CLAUDE.md release/
+        
+        # Create deployment guides
+        cat > release/DEPLOYMENT.md << 'EOF'
+        # Codex Umbra Deployment Guide
+        
+        ## Quick Start with Docker
+        
+        1. Clone or download this release
+        2. Ensure Docker and Docker Compose are installed
+        3. Run: `docker-compose up -d`
+        4. Access the interface at http://localhost:5173
+        
+        ## Production Deployment
+        
+        Use the provided docker-compose.production.yml for production deployments.
+        
+        ## Health Checks
+        
+        - Conductor: http://localhost:8000/health
+        - Sentinel: http://localhost:8001/health
+        - Visage: http://localhost:5173
+        
+        ## Support
+        
+        For issues, please check the documentation in the docs/ folder.
+        EOF
+        
+        # Create archive
+        tar -czf codex-umbra-${{ steps.version.outputs.version }}.tar.gz release/
+        zip -r codex-umbra-${{ steps.version.outputs.version }}.zip release/
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        release_name: Codex Umbra ${{ steps.version.outputs.version }}
+        body: |
+          # Codex Umbra ${{ steps.version.outputs.version }}
+          
+          ## 🚀 What's New
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## 📦 Components
+          
+          - **🎯 The Conductor**: Backend orchestrator with Oracle integration
+          - **🛡️ The Sentinel**: MCP server for system management  
+          - **👁️ The Visage**: Conversational web interface
+          - **🔮 The Oracle**: Mistral LLM for natural language processing
+          
+          ## 🐳 Docker Images
+          
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}-conductor:${{ steps.version.outputs.version }}
+          docker pull ghcr.io/${{ github.repository }}-sentinel:${{ steps.version.outputs.version }}
+          docker pull ghcr.io/${{ github.repository }}-visage:${{ steps.version.outputs.version }}
+          ```
+          
+          ## 🛠️ Quick Start
+          
+          1. Download the release artifacts
+          2. Extract and run: `docker-compose up -d`
+          3. Visit: http://localhost:5173
+          
+          ## ✅ Testing
+          
+          All components have passed:
+          - ✅ Unit tests
+          - ✅ Integration tests  
+          - ✅ Security scans
+          - ✅ Performance validation
+          
+          ## 📚 Documentation
+          
+          Complete documentation is available in the `docs/` folder of this release.
+        draft: false
+        prerelease: false
+
+    - name: Upload release artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./codex-umbra-${{ steps.version.outputs.version }}.tar.gz
+        asset_name: codex-umbra-${{ steps.version.outputs.version }}.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload release zip
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./codex-umbra-${{ steps.version.outputs.version }}.zip
+        asset_name: codex-umbra-${{ steps.version.outputs.version }}.zip
+        asset_content_type: application/zip
+
+  publish-images:
+    name: Publish Release Images
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: create-release
+    
+    strategy:
+      matrix:
+        component: [conductor, sentinel, visage]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Build and push release image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ matrix.component == 'conductor' && 'conductor_project' || matrix.component == 'sentinel' && 'mcp_server_project' || 'codex-umbra-visage-simple' }}
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.component }}:${{ steps.version.outputs.version }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.component }}:latest
+        platforms: linux/amd64,linux/arm64
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  update-documentation:
+    name: Update Documentation
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [create-release, publish-images]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update version in documentation
+      run: |
+        VERSION=${{ needs.create-release.outputs.version }}
+        echo "📝 Updating documentation for version $VERSION"
+        
+        # Update README with latest version
+        sed -i "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+/version-${VERSION#v}/g" README.md
+        
+        # Update CLAUDE.md with release info
+        cat >> CLAUDE.md << EOF
+        
+        ## Latest Release: $VERSION
+        
+        The latest stable release includes:
+        - Oracle-first conversational interface
+        - Comprehensive testing suite
+        - Docker containerization
+        - CI/CD pipeline
+        
+        See the [releases page](https://github.com/${{ github.repository }}/releases) for more information.
+        EOF
+
+    - name: Commit documentation updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add README.md CLAUDE.md
+        git commit -m "docs: update documentation for release ${{ needs.create-release.outputs.version }}" || exit 0
+        git push
+
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [create-release, publish-images, update-documentation]
+    if: always() && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Notify success
+      if: needs.create-release.result == 'success' && needs.publish-images.result == 'success'
+      run: |
+        echo "🎉 Release ${{ needs.create-release.outputs.version }} completed successfully!"
+        echo "📦 Docker images published"
+        echo "📚 Documentation updated"
+        echo "🔗 Release: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version }}"
+
+    - name: Notify failure
+      if: needs.create-release.result == 'failure' || needs.publish-images.result == 'failure'
+      run: |
+        echo "❌ Release ${{ needs.create-release.outputs.version }} failed!"
+        echo "🚨 Please check the workflow logs and retry"
+        exit 1

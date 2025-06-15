@@ -1,0 +1,296 @@
+name: Code Quality & Security
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Shallow clones should be disabled for better analysis
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: codex-umbra-visage/package-lock.json
+
+    - name: Install Python quality tools
+      run: |
+        pip install black flake8 mypy bandit safety pytest-cov radon
+        pip install -r conductor_project/requirements.txt
+        pip install -r mcp_server_project/requirements.txt
+
+    - name: Install Node.js dependencies
+      working-directory: codex-umbra-visage
+      run: npm ci
+
+    - name: Python Code Formatting Check
+      run: |
+        echo "🐍 Checking Python code formatting..."
+        black --check --diff conductor_project/ mcp_server_project/
+
+    - name: Python Linting
+      run: |
+        echo "🔍 Running Python linting..."
+        flake8 conductor_project/ mcp_server_project/ --count --statistics --format=github
+
+    - name: Python Type Checking
+      run: |
+        echo "🔧 Running Python type checking..."
+        mypy conductor_project/ --ignore-missing-imports
+        mypy mcp_server_project/ --ignore-missing-imports
+
+    - name: Python Complexity Analysis
+      run: |
+        echo "📊 Analyzing code complexity..."
+        radon cc conductor_project/ mcp_server_project/ --min=B
+        radon mi conductor_project/ mcp_server_project/ --min=B
+
+    - name: Frontend Linting
+      working-directory: codex-umbra-visage
+      run: |
+        echo "🎨 Running frontend linting..."
+        npm run lint --if-present
+
+    - name: Frontend Type Checking
+      working-directory: codex-umbra-visage
+      run: |
+        echo "⚡ Running frontend type checking..."
+        npm run type-check --if-present
+
+  dependency-security:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: codex-umbra-visage/package-lock.json
+
+    - name: Python Dependency Security Scan
+      run: |
+        pip install safety
+        echo "🔒 Scanning Python dependencies for vulnerabilities..."
+        safety check -r conductor_project/requirements.txt --json --output safety-report.json
+        safety check -r mcp_server_project/requirements.txt --json --output safety-mcp-report.json
+      continue-on-error: true
+
+    - name: Install Node.js dependencies
+      working-directory: codex-umbra-visage
+      run: npm ci
+
+    - name: Node.js Dependency Security Scan
+      working-directory: codex-umbra-visage
+      run: |
+        echo "🔒 Scanning Node.js dependencies for vulnerabilities..."
+        npm audit --audit-level=high --json > ../npm-audit-report.json
+      continue-on-error: true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependency-security-reports
+        path: |
+          safety-report.json
+          safety-mcp-report.json
+          npm-audit-report.json
+
+  container-security:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        component: [conductor, sentinel, visage]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: |
+        context_dir=""
+        case "${{ matrix.component }}" in
+          "conductor") context_dir="conductor_project" ;;
+          "sentinel") context_dir="mcp_server_project" ;;
+          "visage") context_dir="codex-umbra-visage-simple" ;;
+        esac
+        
+        docker build -t codex-umbra-${{ matrix.component }}:scan $context_dir
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'codex-umbra-${{ matrix.component }}:scan'
+        format: 'sarif'
+        output: 'trivy-${{ matrix.component }}.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-${{ matrix.component }}.sarif'
+        category: 'container-${{ matrix.component }}'
+
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        language: ['python', 'javascript']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended,security-and-quality
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: '/language:${{ matrix.language }}'
+
+  documentation-check:
+    name: Documentation Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check documentation completeness
+      run: |
+        echo "📚 Checking documentation completeness..."
+        
+        # Check for required documentation files
+        required_docs=(
+          "README.md"
+          "CLAUDE.md"
+          "docs/architecture/"
+          "docs/components/"
+          "docs/planning/"
+          "docs/testing/"
+        )
+        
+        missing_docs=()
+        for doc in "${required_docs[@]}"; do
+          if [[ ! -e "$doc" ]]; then
+            missing_docs+=("$doc")
+          fi
+        done
+        
+        if [[ ${#missing_docs[@]} -gt 0 ]]; then
+          echo "❌ Missing documentation:"
+          printf '%s\n' "${missing_docs[@]}"
+          exit 1
+        fi
+        
+        echo "✅ All required documentation files present"
+
+    - name: Check API documentation
+      run: |
+        echo "🔌 Checking API documentation..."
+        
+        # Check if API endpoints are documented
+        if grep -r "POST /api/v1/chat" docs/ >/dev/null; then
+          echo "✅ API endpoints documented"
+        else
+          echo "⚠️  API endpoints not fully documented"
+        fi
+
+    - name: Validate Docker Compose files
+      run: |
+        echo "🐳 Validating Docker Compose configuration..."
+        docker-compose config -q
+        echo "✅ Docker Compose configuration is valid"
+
+  performance-check:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Compose
+      run: |
+        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+
+    - name: Start services for performance testing
+      run: |
+        docker-compose up -d --build
+        
+        # Wait for services to be ready
+        timeout 300 bash -c 'until curl -s http://localhost:8000/health; do sleep 5; done'
+        timeout 300 bash -c 'until curl -s http://localhost:8001/health; do sleep 5; done'
+
+    - name: Run performance tests
+      run: |
+        echo "⚡ Running performance tests..."
+        
+        # Test response times
+        for i in {1..10}; do
+          start_time=$(date +%s%N)
+          curl -s -X POST http://localhost:8000/api/v1/chat \
+            -H "Content-Type: application/json" \
+            -d '{"message":"status","user_id":"perf-test"}' > /dev/null
+          end_time=$(date +%s%N)
+          
+          duration=$((($end_time - $start_time) / 1000000))  # Convert to milliseconds
+          echo "Request $i: ${duration}ms"
+          
+          if [[ $duration -gt 5000 ]]; then  # 5 second threshold
+            echo "❌ Request took too long: ${duration}ms"
+            exit 1
+          fi
+        done
+        
+        echo "✅ All performance tests passed"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
+        docker system prune -f
