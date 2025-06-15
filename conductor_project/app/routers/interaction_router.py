@@ -35,34 +35,31 @@ async def chat_endpoint(
                 response_text = f"Oracle unavailable: {llm_response['error']}"
                 print(f"❌ Oracle error: {llm_response['error']}")
             else:
-                oracle_interpretation = llm_response.get("response", "").lower().strip()
+                oracle_response = llm_response.get("response", "")
+                oracle_interpretation = oracle_response.lower().strip()
                 print(f"🔮 Oracle interpretation: '{oracle_interpretation}'")
                 
-                # Execute based on Oracle's interpretation
-                # Prioritize help/guidance requests first (since Oracle mentions commands in help responses)
-                if any(keyword in oracle_interpretation for keyword in ["for any other requests", "feel free to ask", "explain what you need help", "inquiries", "clarification"]) or \
-                   (user_input.lower().strip() in ["help", "what can you do", "assistance", "what can i do"]):
-                    response_text = f"Oracle Guidance: {llm_response.get('response', 'I can help you check system status and health. Try asking about system status or health.')}"
-                # Check for health-related keywords (including backtick commands) 
-                elif any(keyword in oracle_interpretation for keyword in ["`health_check`", "health_check", "health", "diagnostic", "system health"]) or \
-                     ("how are you" in user_input.lower() or "doing" in user_input.lower()):
-                    sentinel_response = await mcp_service.health_check()
-                    if "error" in sentinel_response:
-                        response_text = f"Sentinel Error: {sentinel_response['error']}"
-                    else:
-                        status = sentinel_response.get('status', 'unknown')
-                        response_text = f"Sentinel Health: {status}"
-                # Check for status-related keywords (including backtick commands)
-                elif any(keyword in oracle_interpretation for keyword in ["`get_status`", "get_status", "operational status", "system status"]) or \
-                     ("status" in user_input.lower() and "health" not in user_input.lower()):
+                # Check if Oracle is explicitly directing to use system commands
+                # Only route to Sentinel for very specific command requests
+                if ("`get_status`" in oracle_interpretation and "use the command" in oracle_interpretation) or \
+                   (user_input.lower().strip() == "get_status"):
                     sentinel_response = await mcp_service.get_status()
                     if "error" in sentinel_response:
-                        response_text = f"Sentinel Error: {sentinel_response['error']}"
+                        response_text = f"System Status Error: {sentinel_response['error']}"
                     else:
-                        response_text = f"Sentinel Status: {sentinel_response.get('status', 'Unknown')}"
+                        status = sentinel_response.get('status', 'Unknown')
+                        response_text = f"System Status: {status}\n\n{oracle_response}"
+                elif ("`health_check`" in oracle_interpretation and "use the command" in oracle_interpretation) or \
+                     (user_input.lower().strip() == "health_check"):
+                    sentinel_response = await mcp_service.health_check()
+                    if "error" in sentinel_response:
+                        response_text = f"System Health Error: {sentinel_response['error']}"
+                    else:
+                        status = sentinel_response.get('status', 'unknown')
+                        response_text = f"System Health: {status}\n\n{oracle_response}"
                 else:
-                    # Return Oracle's interpretation/clarification
-                    response_text = f"Oracle Response: {llm_response.get('response', 'Oracle could not interpret request')}"
+                    # Default: Return Oracle's conversational response as primary interface
+                    response_text = oracle_response
         else:
             # Fallback to simple command detection
             user_text = user_input.lower().strip()
