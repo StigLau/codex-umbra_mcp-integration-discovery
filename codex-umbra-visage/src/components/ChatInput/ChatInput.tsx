@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import './ChatInput.module.css'
+import styles from './ChatInput.module.css'
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void
   disabled?: boolean
 }
 
-export default function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
+export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -18,16 +18,16 @@ export default function ChatInput({ onSendMessage, disabled = false }: ChatInput
   }
 
   return (
-    <form onSubmit={handleSubmit} className="chat-input-form">
+    <form onSubmit={handleSubmit} className={styles['chat-input-form']}>
       <input
         type="text"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Enter command for The Sentinel..."
         disabled={disabled}
-        className="chat-input"
+        className={styles['chat-input']}
       />
-      <button type="submit" disabled={disabled || !message.trim()} className="send-button">
+      <button type="submit" disabled={disabled || !message.trim()} className={styles['send-button']}>
         Send
       </button>
     </form>

@@ -20,17 +20,23 @@ async def chat_endpoint(
 ):
     """Main chat endpoint for user interaction with The Sentinel via The Oracle."""
     try:
+        user_input = message.content
+        print(f"🎯 Chat request: '{user_input}' from user: {message.user_id}")
+        
         # Check if LLM is available
         llm_available = await llm_service.is_available()
+        print(f"🔮 Oracle available: {llm_available}")
         
         if llm_available:
             # Use The Oracle to interpret the request
-            llm_response = await llm_service.interpret_user_request(message.text)
+            llm_response = await llm_service.interpret_user_request(user_input)
             
             if "error" in llm_response:
                 response_text = f"Oracle unavailable: {llm_response['error']}"
+                print(f"❌ Oracle error: {llm_response['error']}")
             else:
                 oracle_interpretation = llm_response.get("response", "").lower().strip()
+                print(f"🔮 Oracle interpretation: '{oracle_interpretation}'")
                 
                 # Execute based on Oracle's interpretation
                 if "get_status" in oracle_interpretation:
@@ -51,7 +57,8 @@ async def chat_endpoint(
                     response_text = llm_response.get("response", "Oracle could not interpret request")
         else:
             # Fallback to simple command detection
-            user_text = message.text.lower().strip()
+            user_text = user_input.lower().strip()
+            print(f"🔧 Using fallback mode for: '{user_text}'")
             
             if "status" in user_text:
                 sentinel_response = await mcp_service.get_status()
@@ -67,7 +74,9 @@ async def chat_endpoint(
                     status = sentinel_response.get('status', 'unknown')
                     response_text = f"Sentinel Health: {status}"
             else:
-                response_text = f"Oracle offline. Available commands: 'status', 'health'. You said: {message.text}"
+                response_text = f"Oracle offline. Available commands: 'status', 'health'. You said: {user_input}"
+        
+        print(f"📤 Response: '{response_text[:50]}...'")
         
         return ChatResponse(
             response=response_text,
@@ -75,6 +84,7 @@ async def chat_endpoint(
         )
     
     except Exception as e:
+        print(f"💥 Chat endpoint error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 @router.get("/sentinel/health")

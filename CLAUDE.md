@@ -17,9 +17,32 @@ The system operates in three modes:
 - **Running Mode**: Standard operational mode
 - **In the Wild Mode**: Future autonomous operation
 
+## Project Structure
+
+```
+├── docs/                    # Documentation organized by purpose
+│   ├── architecture/        # System architecture documents
+│   ├── components/          # Component-specific documentation
+│   ├── planning/           # Project planning and guidelines
+│   └── testing/            # Testing strategies and plans
+├── scripts/                # Shell scripts for testing and deployment
+├── tests/                  # Root-level test files and utilities
+├── codex-umbra-visage/     # The Visage (React/TypeScript frontend)
+├── conductor_project/      # The Conductor (Python/FastAPI backend)
+└── mcp_server_project/     # The Sentinel (Python/FastAPI MCP server)
+```
+
 ## Development Commands
 
-### The Sentinel (MCP Server)
+### Quick Start All Components
+```bash
+./scripts/start_codex_umbra.sh    # Start all components
+./scripts/docker-start.sh         # Start with Docker
+```
+
+### Individual Components
+
+#### The Sentinel (MCP Server)
 ```bash
 cd mcp_server_project
 python -m venv venv
@@ -28,7 +51,7 @@ pip install -r requirements.txt
 uvicorn mcp_server.main:mcp_app --reload --port 8001
 ```
 
-### The Conductor (Backend)
+#### The Conductor (Backend)
 ```bash
 cd conductor_project
 python -m venv venv
@@ -37,20 +60,35 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-### The Visage (Frontend)
+#### The Visage (Frontend)
 ```bash
 cd codex-umbra-visage
 npm install
 npm run dev
 ```
 
-### The Oracle (Mistral LLM)
+#### The Oracle (Mistral LLM)
 ```bash
 ollama pull mistral
 ollama run mistral
 ```
 
 ## Testing
+
+### End-to-End Testing
+```bash
+./scripts/test_full_integration.sh        # Comprehensive integration test
+./scripts/test_integration_comprehensive.sh  # Extended integration test
+./scripts/test_basic.sh                    # Basic functionality test
+./scripts/test_quick_sanity.sh            # Quick sanity check
+```
+
+### Component Testing
+```bash
+./scripts/test_oracle_direct.sh           # Test Oracle directly
+./scripts/test_oracle_integration.sh      # Test Oracle integration
+./scripts/test_visage_v2_integration.sh   # Test Visage integration
+```
 
 ### Python Components
 ```bash
@@ -62,6 +100,7 @@ pytest --cov             # With coverage
 
 ### Frontend
 ```bash
+cd codex-umbra-visage
 npm test                  # Unit tests
 npm run test:e2e         # End-to-end tests
 ```
@@ -81,6 +120,14 @@ curl http://localhost:8000/health  # Conductor health
 - FastAPI for Python backends with modular architecture
 - React/TypeScript with component-centric structure
 - Comprehensive testing at unit, integration, and E2E levels
+
+## User Preferences
+
+- **"Wrap it up"**: Commit all staged changes with appropriate commit message and branch creation
+- **Project Organization**: Keep documentation organized in docs/ with purpose-based subfolders
+- **Scripts & Tests**: Maintain scripts/ and tests/ folders for better organization
+- **End-to-End Focus**: Prioritize working end-to-end functionality over individual components
+- **Branch Management**: Create appropriately named branches for feature work when not on main
 
 ## Component Communication
 

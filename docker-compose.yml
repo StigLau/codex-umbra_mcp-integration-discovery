@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  sentinel:
+    build:
+      context: ./mcp_server_project
+      dockerfile: Dockerfile
+    container_name: codex-sentinel
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - codex-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  conductor:
+    build:
+      context: ./conductor_project
+      dockerfile: Dockerfile
+    container_name: codex-conductor
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SENTINEL_URL=http://sentinel:8001
+      - OLLAMA_URL=http://host.docker.internal:11434
+    depends_on:
+      sentinel:
+        condition: service_healthy
+    networks:
+      - codex-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  visage:
+    build:
+      context: ./codex-umbra-visage-simple
+      dockerfile: Dockerfile
+    container_name: codex-visage
+    ports:
+      - "5173:5173"
+    depends_on:
+      conductor:
+        condition: service_healthy
+    networks:
+      - codex-network
+    restart: unless-stopped
+
+networks:
+  codex-network:
+    driver: bridge

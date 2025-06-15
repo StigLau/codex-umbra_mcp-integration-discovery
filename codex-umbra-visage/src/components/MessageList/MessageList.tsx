@@ -1,30 +1,24 @@
-import './MessageList.module.css'
-
-interface Message {
-  id: string
-  text: string
-  type: 'user' | 'system'
-  timestamp: string
-}
+import styles from './MessageList.module.css'
+import { IMessage } from '../../types'; // Adjusted path
 
 interface MessageListProps {
-  messages: Message[]
+  messages: IMessage[];
 }
 
-export default function MessageList({ messages }: MessageListProps) {
+export function MessageList({ messages }: MessageListProps) {
   return (
-    <div className="message-list">
+    <div className={styles['message-list']}>
       {messages.length === 0 ? (
-        <div className="empty-state">
+        <div className={styles['empty-state']}>
           <h2>Codex Umbra</h2>
           <p>The Sentinel awaits your command...</p>
         </div>
       ) : (
         messages.map((message) => (
-          <div key={message.id} className={`message ${message.type}`}>
-            <div className="message-content">
-              <span className="message-text">{message.text}</span>
-              <span className="message-time">
+          <div key={message.id} className={`${styles.message} ${styles[message.type]}`}>
+            <div className={styles['message-content']}>
+              <span className={styles['message-text']}>{message.text}</span>
+              <span className={styles['message-time']}>
                 {new Date(message.timestamp).toLocaleTimeString()}
               </span>
             </div>
