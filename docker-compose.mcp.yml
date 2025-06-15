@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # The Sentinel - MCP Protocol Server
+  sentinel-mcp:
+    build:
+      context: ./mcp_server_project
+      dockerfile: Dockerfile
+    container_name: sentinel-mcp
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+    command: ["python", "-m", "mcp_server.main_mcp"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/legacy/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - codex-umbra-mcp
+    restart: unless-stopped
+
+  # The Conductor - MCP-Enhanced Backend  
+  conductor-mcp:
+    build:
+      context: ./conductor_project
+      dockerfile: Dockerfile
+    container_name: conductor-mcp
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - MCP_HOST=sentinel-mcp
+      - MCP_PORT=8001
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - MCP_ENHANCED_MODE=true
+      - MCP_LEGACY_FALLBACK=true
+    command: ["python", "-m", "app.main_mcp"]
+    depends_on:
+      sentinel-mcp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - codex-umbra-mcp
+    restart: unless-stopped
+
+  # The Visage - Frontend Interface
+  visage-mcp:
+    build:
+      context: ./codex-umbra-visage-simple
+      dockerfile: Dockerfile
+    container_name: visage-mcp
+    ports:
+      - "5173:80"
+    environment:
+      - CONDUCTOR_URL=http://conductor-mcp:8000
+      - MCP_MODE=true
+    depends_on:
+      conductor-mcp:
+        condition: service_healthy
+    networks:
+      - codex-umbra-mcp
+    restart: unless-stopped
+
+networks:
+  codex-umbra-mcp:
+    driver: bridge
+    name: codex-umbra-mcp-network
+
+# For development with live reloading
+x-development-overrides: &dev-overrides
+  volumes:
+    - ./:/app
+  environment:
+    - DEBUG=true
+    - LOG_LEVEL=DEBUG
+
+# Development compose override
+# Usage: docker-compose -f docker-compose.mcp.yml -f docker-compose.dev.yml up
+version: '3.8'
+services:
+  sentinel-mcp:
+    <<: *dev-overrides
+    volumes:
+      - ./mcp_server_project:/app
+    
+  conductor-mcp:
+    <<: *dev-overrides
+    volumes:
+      - ./conductor_project:/app
