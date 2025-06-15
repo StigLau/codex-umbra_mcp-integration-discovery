@@ -39,22 +39,30 @@ async def chat_endpoint(
                 print(f"🔮 Oracle interpretation: '{oracle_interpretation}'")
                 
                 # Execute based on Oracle's interpretation
-                if "get_status" in oracle_interpretation:
-                    sentinel_response = await mcp_service.get_status()
-                    if "error" in sentinel_response:
-                        response_text = f"Sentinel Error: {sentinel_response['error']}"
-                    else:
-                        response_text = f"Sentinel Status: {sentinel_response.get('status', 'Unknown')}"
-                elif "health_check" in oracle_interpretation:
+                # Prioritize help/guidance requests first (since Oracle mentions commands in help responses)
+                if any(keyword in oracle_interpretation for keyword in ["for any other requests", "feel free to ask", "explain what you need help", "inquiries", "clarification"]) or \
+                   (user_input.lower().strip() in ["help", "what can you do", "assistance", "what can i do"]):
+                    response_text = f"Oracle Guidance: {llm_response.get('response', 'I can help you check system status and health. Try asking about system status or health.')}"
+                # Check for health-related keywords (including backtick commands) 
+                elif any(keyword in oracle_interpretation for keyword in ["`health_check`", "health_check", "health", "diagnostic", "system health"]) or \
+                     ("how are you" in user_input.lower() or "doing" in user_input.lower()):
                     sentinel_response = await mcp_service.health_check()
                     if "error" in sentinel_response:
                         response_text = f"Sentinel Error: {sentinel_response['error']}"
                     else:
                         status = sentinel_response.get('status', 'unknown')
                         response_text = f"Sentinel Health: {status}"
+                # Check for status-related keywords (including backtick commands)
+                elif any(keyword in oracle_interpretation for keyword in ["`get_status`", "get_status", "operational status", "system status"]) or \
+                     ("status" in user_input.lower() and "health" not in user_input.lower()):
+                    sentinel_response = await mcp_service.get_status()
+                    if "error" in sentinel_response:
+                        response_text = f"Sentinel Error: {sentinel_response['error']}"
+                    else:
+                        response_text = f"Sentinel Status: {sentinel_response.get('status', 'Unknown')}"
                 else:
                     # Return Oracle's interpretation/clarification
-                    response_text = llm_response.get("response", "Oracle could not interpret request")
+                    response_text = f"Oracle Response: {llm_response.get('response', 'Oracle could not interpret request')}"
         else:
             # Fallback to simple command detection
             user_text = user_input.lower().strip()
