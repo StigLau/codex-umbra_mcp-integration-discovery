@@ -4,11 +4,13 @@ from mcp_server.main import mcp_app
 
 client = TestClient(mcp_app)
 
+@pytest.mark.timeout(10)
 def test_root():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["message"] == "The Sentinel is operational"
 
+@pytest.mark.timeout(10)
 def test_status():
     response = client.get("/status")
     assert response.status_code == 200
@@ -17,6 +19,7 @@ def test_status():
     assert data["version"] == "1.0.0"
     assert "timestamp" in data
 
+@pytest.mark.timeout(10)
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
