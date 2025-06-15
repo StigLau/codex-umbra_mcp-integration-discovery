@@ -213,6 +213,9 @@
             setLoading(true);
 
             try {
+                console.log(`Making request to: ${API_BASE_URL}/api/v1/chat`);
+                console.log('Request payload:', { message: text, user_id: 'default' });
+                
                 const response = await fetch(`${API_BASE_URL}/api/v1/chat`, {
                     method: 'POST',
                     headers: {
@@ -224,15 +227,26 @@
                     })
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const errorText = await response.text();
+                    console.error('Error response body:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
                 }
 
                 const data = await response.json();
+                console.log('Response data:', data);
                 addMessage(data.response, 'system');
 
             } catch (error) {
                 console.error('API Error:', error);
+                console.error('Error details:', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack
+                });
                 addMessage(`Error: ${error.message}`, 'system');
             } finally {
                 setLoading(false);
