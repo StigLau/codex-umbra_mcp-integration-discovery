@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 
 const CONDUCTOR_URL = 'http://localhost:8000'
-const FRONTEND_URL = 'http://localhost:5173'
 
 describe('Codex Umbra End-to-End Tests', () => {
   beforeAll(async () => {

@@ -1,4 +1,4 @@
-import { ApiResponse, ApiError } from '../types';
+import type { ApiResponse, ApiError } from '../types';
 
 const CONDUCTOR_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 

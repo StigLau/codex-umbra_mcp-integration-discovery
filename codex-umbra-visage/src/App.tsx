@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChatInput } from './components/ChatInput/ChatInput'; // Named import
 import { MessageList } from './components/MessageList/MessageList'; // Named import
 import styles from './App.module.css'; // Import CSS Module
-import { IMessage } from './types'; // Import IMessage
+import type { IMessage } from './types'; // Import IMessage
 import { postMessageToConductor } from './services/api'; // Import API service
 
 function App() {

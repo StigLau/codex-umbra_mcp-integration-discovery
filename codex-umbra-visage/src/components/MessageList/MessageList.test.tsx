@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MessageList } from './MessageList'
-import { IMessage } from '../../types'
+import type { IMessage } from '../../types'
 import { describe, it, expect } from 'vitest'
 
 describe('MessageList', () => {
