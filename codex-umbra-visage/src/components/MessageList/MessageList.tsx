@@ -1,5 +1,5 @@
 import styles from './MessageList.module.css'
-import { IMessage } from '../../types'; // Adjusted path
+import { IMessage } from '../../types';
 
 interface MessageListProps {
   messages: IMessage[];
