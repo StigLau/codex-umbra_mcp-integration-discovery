@@ -1,0 +1,118 @@
+{
+  "status": "completed",
+  "timestamp": "2025-06-25T12:10:11.548202",
+  "test_categories": {
+    "structured_json": {
+      "category": "structured_json_responses",
+      "tests": [
+        {
+          "test_name": "system_health_json_format",
+          "status": "error",
+          "error": "",
+          "response_time": 15.694535255432129
+        },
+        {
+          "test_name": "system_status_both_format",
+          "status": "success",
+          "response_time": 11.087150812149048,
+          "response_format_tested": "both",
+          "oracle_response_preview": "```tool_code\nprint(system_status())\nprint(system_health())\n```\n\n**Explanation:**\n\nYour request was to test system status using both formats.  I interpret this as wanting to see the output of both the ...",
+          "oracle_structured_recognition": true
+        }
+      ],
+      "summary": {
+        "total": 2,
+        "successful": 1,
+        "oracle_recognition_rate": 50.0
+      }
+    },
+    "async_operations": {
+      "category": "async_operations",
+      "tests": [
+        {
+          "test_name": "async_operation_start",
+          "status": "error",
+          "error": "",
+          "response_time": 10.89150595664978
+        },
+        {
+          "test_name": "list_operations",
+          "status": "error",
+          "error": "",
+          "response_time": 11.000852108001709
+        }
+      ],
+      "summary": {
+        "total": 2,
+        "successful": 0,
+        "oracle_async_understanding": 0.0
+      }
+    },
+    "enhanced_tooling": {
+      "category": "enhanced_tooling",
+      "tests": [
+        {
+          "test_name": "search_logs_functionality",
+          "status": "error",
+          "error": "",
+          "response_time": 15.995292901992798
+        },
+        {
+          "test_name": "get_config_granular",
+          "status": "success",
+          "response_time": 8.541532039642334,
+          "expected_capability": "config_access",
+          "capability_indicators_found": 3,
+          "capability_recognition_score": 75.0,
+          "oracle_response_preview": "Analyzing request...\n\nIntent: Retrieve the version of the Model Context Protocol (MCP).\n\nTool Selection: `system_config` is the most appropriate tool to access configuration information.  I will specifically query it for the MCP version.\n\nData Gather..."
+        },
+        {
+          "test_name": "get_config_partial_match",
+          "status": "success",
+          "response_time": 10.094532012939453,
+          "expected_capability": "config_search",
+          "capability_indicators_found": 3,
+          "capability_recognition_score": 75.0,
+          "oracle_response_preview": "Accessing `system_config` and filtering for \"sentinel\"...\n\nAnalyzing `system://config/capabilities`...\n\nParsing `system://logs/sentinel.log` for configuration references...\n\n\nBased on analysis of available system resources, the following sentinel-rel..."
+        }
+      ],
+      "summary": {
+        "total": 3,
+        "successful": 2,
+        "average_capability_recognition": 50.0
+      }
+    },
+    "performance": {
+      "category": "performance_improvements",
+      "tests": [
+        {
+          "test_name": "json_format_performance",
+          "status": "error",
+          "error": "",
+          "format": "json"
+        },
+        {
+          "test_name": "text_format_performance",
+          "status": "error",
+          "error": "",
+          "format": "text"
+        }
+      ],
+      "summary": {
+        "total": 2,
+        "successful": 0,
+        "average_json_time": null,
+        "average_text_time": null,
+        "performance_improvement_percent": null
+      }
+    }
+  },
+  "overall_summary": {
+    "total_tests": 9,
+    "successful_tests": 3,
+    "overall_success_rate": 33.33333333333333,
+    "oracle_improvements_validated": false,
+    "performance_improvement": null,
+    "ready_for_production": false
+  }
+}
