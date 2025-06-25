@@ -1,0 +1,150 @@
+{
+  "status": "completed",
+  "timestamp": "2025-06-25T10:34:27.160159",
+  "health_status": {
+    "conductor": true,
+    "sentinel": true
+  },
+  "provider_test": {
+    "status": "success",
+    "providers": {
+      "providers": [
+        {
+          "provider": "ollama",
+          "model": "mistral",
+          "base_url": "http://localhost:11434",
+          "type": "local",
+          "available": false
+        },
+        {
+          "provider": "anthropic",
+          "model": "claude-3-5-sonnet-20241022",
+          "max_tokens": 4096,
+          "temperature": 0.7,
+          "type": "cloud",
+          "available": false
+        },
+        {
+          "provider": "gemini",
+          "model": "gemini-1.5-pro-latest",
+          "max_tokens": 4096,
+          "temperature": 0.7,
+          "type": "cloud",
+          "available": true
+        }
+      ],
+      "timestamp": "2025-06-25T08:33:12.857437Z"
+    }
+  },
+  "query_results": {
+    "total": 6,
+    "successful": 6,
+    "failed": 0,
+    "success_rate": 100.0,
+    "average_response_time": 11.381400068600973
+  },
+  "detailed_results": [
+    {
+      "query": "Hello, can you help me understand what this system does?",
+      "category": "introduction",
+      "status": "success",
+      "response_time": 13.948797941207886,
+      "response_length": 2414,
+      "keywords_found": [
+        "system",
+        "codex",
+        "umbra"
+      ],
+      "keywords_expected": [
+        "system",
+        "help",
+        "codex",
+        "umbra"
+      ],
+      "response_preview": "Analyzing your request...\n\nAccessing MCP Tool: `system_status`...\nAccessing MCP Tool: `system_config`...\n\nSynthesizing data...\n\nThis system, Codex Umbra, is designed to provide intelligent assistance ..."
+    },
+    {
+      "query": "What is the weather like today?",
+      "category": "general_query",
+      "status": "success",
+      "response_time": 9.19193410873413,
+      "response_length": 888,
+      "keywords_found": [
+        "weather"
+      ],
+      "keywords_expected": [
+        "weather",
+        "today",
+        "temperature"
+      ],
+      "response_preview": "Unfortunately, my current MCP toolset (system_health, system_status, system_config, add_numbers) and available resources (system://logs/sentinel.log, system://status/runtime, system://config/capabilit..."
+    },
+    {
+      "query": "Can you solve this math problem: what is 15 + 27?",
+      "category": "calculation",
+      "status": "success",
+      "response_time": 12.485231876373291,
+      "response_length": 3065,
+      "keywords_found": [
+        "42",
+        "math",
+        "addition"
+      ],
+      "keywords_expected": [
+        "42",
+        "math",
+        "addition"
+      ],
+      "response_preview": "1. **Executive Summary**:  Codex Umbra encountered a minor arithmetic challenge.  The system is fully operational, and the risk is negligible. The mathematical operation has been successfully complete..."
+    },
+    {
+      "query": "Tell me a short joke about programming",
+      "category": "creative",
+      "status": "success",
+      "response_time": 4.610928297042847,
+      "response_length": 245,
+      "keywords_found": [],
+      "keywords_expected": [
+        "programming",
+        "code",
+        "joke"
+      ],
+      "response_preview": "Why do programmers prefer dark mode?\n\nBecause light attracts bugs!\n\n\n\ud83e\udde0 **Oracle Intelligence**: mcp_enhanced mode using `intelligent_assistant` prompt template\n\ud83d\udee0\ufe0f  **Available MCP Tools**: system_heal..."
+    },
+    {
+      "query": "Explain quantum computing in simple terms",
+      "category": "educational",
+      "status": "success",
+      "response_time": 15.002823114395142,
+      "response_length": 3812,
+      "keywords_found": [
+        "quantum",
+        "computing",
+        "simple"
+      ],
+      "keywords_expected": [
+        "quantum",
+        "computing",
+        "simple"
+      ],
+      "response_preview": "\ud83c\udfaf **ORACLE EXPERT CONSULTATION** - GENERAL DOMAIN\n\n**CONSULTATION REQUEST**: Explain quantum computing in simple terms\n\n**TECHNICAL ANALYSIS**:\n\nWhile the provided MCP tools (`system_health`, `system_..."
+    },
+    {
+      "query": "What are the main components of this Codex Umbra system?",
+      "category": "system_specific",
+      "status": "success",
+      "response_time": 13.048685073852539,
+      "response_length": 377,
+      "keywords_found": [
+        "oracle"
+      ],
+      "keywords_expected": [
+        "conductor",
+        "sentinel",
+        "oracle",
+        "visage"
+      ],
+      "response_preview": "Codex Umbra's core is the Model Context Protocol (MCP), an API connecting its components.  The Oracle (the AI) uses the MCP to access tools (like `system_health`), resources (data repositories), and i..."
+    }
+  ]
+}

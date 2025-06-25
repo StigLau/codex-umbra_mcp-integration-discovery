@@ -1,6 +1,7 @@
 """
 Enhanced LLM Service for The Oracle
 Uses MCP prompt templates and dynamic tool discovery for intelligent responses
+Supports multiple LLM providers: Ollama, Anthropic Claude, Google Gemini
 """
 
 import httpx
@@ -9,6 +10,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from .mcp_service_v2 import MCPServiceV2
+from .llm_provider_service import multi_llm_service, LLMProvider
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -20,80 +22,84 @@ class LLMServiceV2:
     """
     
     def __init__(self):
-        self.base_url = settings.ollama_url
-        self.model = "mistral"
-        self.timeout = 30.0
         self.mcp_service = MCPServiceV2()
+        self.multi_llm = multi_llm_service
         
     async def is_available(self) -> bool:
-        """Check if Ollama service is available"""
+        """Check if any LLM provider is available"""
+        available_providers = await self.multi_llm.get_available_providers()
+        return any(provider["available"] for provider in available_providers)
+    
+    async def get_available_providers(self) -> List[Dict[str, Any]]:
+        """Get list of available LLM providers"""
+        return await self.multi_llm.get_available_providers()
+    
+    async def set_llm_provider(self, provider_name: str) -> bool:
+        """Set the active LLM provider"""
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
-                return response.status_code == 200
-        except:
+            provider = LLMProvider(provider_name)
+            await self.multi_llm.set_default_provider(provider)
+            return True
+        except (ValueError, RuntimeError) as e:
+            logger.error(f"Failed to set LLM provider to {provider_name}: {e}")
             return False
     
-    async def generate_response(self, prompt: str, system_prompt: Optional[str] = None, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Generate a response using Mistral via Ollama with optional context"""
+    async def generate_response(self, prompt: str, system_prompt: Optional[str] = None, context: Dict[str, Any] = None, provider: Optional[str] = None) -> Dict[str, Any]:
+        """Generate a response using the multi-LLM provider service"""
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                messages = []
-                
-                if system_prompt:
-                    messages.append({
-                        "role": "system",
-                        "content": system_prompt
-                    })
-                
-                # Add context if provided
-                if context:
-                    context_info = self._format_context(context)
-                    if context_info:
-                        messages.append({
-                            "role": "system",
-                            "content": f"Additional Context: {context_info}"
-                        })
-                
-                messages.append({
-                    "role": "user",
-                    "content": prompt
-                })
-                
-                payload = {
-                    "model": self.model,
-                    "messages": messages,
-                    "stream": False
-                }
-                
-                response = await client.post(
-                    f"{self.base_url}/api/chat",
-                    json=payload
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    return {
-                        "response": result.get("message", {}).get("content", ""),
-                        "model": result.get("model", self.model),
-                        "done": result.get("done", True),
-                        "context_used": bool(context)
-                    }
-                else:
-                    return {
-                        "error": f"Ollama API error: HTTP {response.status_code}",
-                        "details": response.text
-                    }
-                    
-        except httpx.RequestError as e:
+            # Construct the full prompt
+            full_prompt = self._construct_full_prompt(prompt, system_prompt, context)
+            
+            # Use specified provider or default
+            llm_provider = None
+            if provider:
+                try:
+                    llm_provider = LLMProvider(provider)
+                except ValueError:
+                    logger.warning(f"Invalid provider '{provider}', using default")
+            
+            # Generate response using multi-LLM service
+            response_data = await self.multi_llm.generate_response(
+                full_prompt, 
+                provider=llm_provider
+            )
+            
             return {
-                "error": f"Connection to Ollama failed: {str(e)}",
-                "available": False
+                "response": response_data["response"],
+                "provider_used": response_data["provider_used"],
+                "model_info": response_data["model_info"],
+                "timestamp": response_data["timestamp"],
+                "fallback_from": response_data.get("fallback_from"),
+                "oracle_enhanced": True
             }
+            
         except Exception as e:
+            logger.error(f"Error generating LLM response: {e}")
             return {
-                "error": f"LLM service error: {str(e)}"
+                "response": f"Oracle Error: {str(e)}",
+                "error": True,
+                "timestamp": self._get_timestamp()
             }
+    
+    def _construct_full_prompt(self, prompt: str, system_prompt: Optional[str] = None, context: Dict[str, Any] = None) -> str:
+        """Construct the full prompt with system instructions and context"""
+        parts = []
+        
+        if system_prompt:
+            parts.append(f"System: {system_prompt}")
+        
+        if context:
+            context_info = self._format_context(context)
+            if context_info:
+                parts.append(f"Context: {context_info}")
+        
+        parts.append(f"User: {prompt}")
+        
+        return "\n\n".join(parts)
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp in ISO format"""
+        return datetime.utcnow().isoformat() + "Z"
     
     def _format_context(self, context: Dict[str, Any]) -> str:
         """Format context information for LLM consumption"""

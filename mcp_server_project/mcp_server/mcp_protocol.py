@@ -156,6 +156,32 @@ class MCPServer:
             }
         )
         
+        # Simple Addition Tool - For testing function calling
+        self.tools["add_numbers"] = MCPTool(
+            name="add_numbers",
+            description="Add two numbers together and return the result",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "number",
+                        "description": "First number to add"
+                    },
+                    "b": {
+                        "type": "number", 
+                        "description": "Second number to add"
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["simple", "detailed"],
+                        "default": "simple",
+                        "description": "Response format"
+                    }
+                },
+                "required": ["a", "b"]
+            }
+        )
+        
         # Resources - System data exposure
         self.resources["system://logs/sentinel.log"] = MCPResource(
             uri="system://logs/sentinel.log",
@@ -281,6 +307,8 @@ class MCPServer:
             return await self._handle_system_status(arguments)
         elif tool_name == "system_config":
             return await self._handle_system_config(arguments)
+        elif tool_name == "add_numbers":
+            return await self._handle_add_numbers(arguments)
         else:
             raise MCPError(-32603, f"Tool handler not implemented: {tool_name}")
     
@@ -453,6 +481,37 @@ class MCPServer:
             }
         
         return {"content": [{"type": "text", "text": json.dumps(config_data, indent=2)}]}
+    
+    async def _handle_add_numbers(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle add_numbers tool execution - Simple addition for testing function calling"""
+        a = args.get("a")
+        b = args.get("b")
+        format_type = args.get("format", "simple")
+        
+        if a is None or b is None:
+            raise MCPError(-32602, "Both 'a' and 'b' parameters are required")
+        
+        try:
+            # Perform the addition
+            result = float(a) + float(b)
+            
+            if format_type == "simple":
+                response_text = f"{a} + {b} = {result}"
+            else:  # detailed
+                response_text = json.dumps({
+                    "operation": "addition",
+                    "operands": {"a": a, "b": b},
+                    "result": result,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "calculation": f"{a} + {b} = {result}"
+                }, indent=2)
+            
+            logger.info(f"✅ Addition performed: {a} + {b} = {result}")
+            return {"content": [{"type": "text", "text": response_text}]}
+            
+        except (ValueError, TypeError) as e:
+            logger.error(f"❌ Addition failed: {e}")
+            raise MCPError(-32602, f"Invalid number parameters: {e}")
 
     # Resource Handlers
     async def _read_system_logs(self) -> Dict[str, Any]:

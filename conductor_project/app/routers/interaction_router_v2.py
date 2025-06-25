@@ -9,9 +9,11 @@ import logging
 import asyncio
 from typing import Dict, Any, Optional
 
-from app.schemas.request_schemas import ChatMessage, ChatResponse
+from app.schemas.request_schemas import ChatMessage, ChatResponse, FunctionCallRequest, FunctionCallResponse
 from app.services.mcp_service_v2 import MCPServiceV2
 from app.services.llm_service_v2 import LLMServiceV2
+from app.services.llm_provider_service import LLMProvider
+from app.services.llm_function_calling_service import llm_function_calling_service
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,45 @@ async def enhanced_chat_endpoint(
     mcp_service: MCPServiceV2 = Depends(get_mcp_service),
     llm_service: LLMServiceV2 = Depends(get_llm_service)
 ):
+    """Enhanced chat endpoint with optional function calling support"""
+    
+    # Check if function calling is requested
+    if message.enable_function_calling or message.conversation_id:
+        try:
+            # Initialize function calling service if not already done
+            if not hasattr(llm_function_calling_service, '_initialized'):
+                await llm_function_calling_service.initialize()
+                llm_function_calling_service._initialized = True
+            
+            # Handle function calling conversation
+            if message.conversation_id:
+                # Continue existing conversation
+                result = await llm_function_calling_service.continue_function_calling_conversation(
+                    message.conversation_id,
+                    message.content
+                )
+            else:
+                # Start new function calling conversation
+                result = await llm_function_calling_service.start_function_calling_conversation(
+                    message.content,
+                    message.provider
+                )
+            
+            return ChatResponse(
+                response=result["response"],
+                timestamp=result["timestamp"],
+                provider_used=result.get("provider_used"),
+                function_calling_enabled=True,
+                conversation_id=result["conversation_id"],
+                tool_calls_made=result.get("tool_calls_made", []),
+                turn=result.get("turn")
+            )
+            
+        except Exception as e:
+            logger.error(f"Function calling failed, falling back to regular chat: {e}")
+            # Fall through to regular chat handling
+    
+    # Regular chat handling (existing logic)
     """
     Enhanced chat endpoint with full MCP integration
     Features dynamic tool discovery, intelligent routing, and context-aware responses
@@ -322,6 +363,170 @@ async def read_mcp_resource(
         return result
     except Exception as e:
         logger.error(f"❌ Direct MCP resource read failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# LLM Provider Management Endpoints
+@router.get("/llm/providers")
+async def get_available_llm_providers(llm_service: LLMServiceV2 = Depends(get_llm_service)):
+    """Get list of available LLM providers and their status"""
+    try:
+        providers = await llm_service.get_available_providers()
+        return {
+            "providers": providers,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to get LLM providers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/llm/provider/{provider_name}")
+async def set_llm_provider(
+    provider_name: str,
+    llm_service: LLMServiceV2 = Depends(get_llm_service)
+):
+    """Set the active LLM provider (ollama, anthropic, gemini)"""
+    try:
+        success = await llm_service.set_llm_provider(provider_name)
+        if success:
+            return {
+                "message": f"LLM provider set to {provider_name}",
+                "provider": provider_name,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Failed to set provider to {provider_name}. Provider may not be available."
+            )
+    except Exception as e:
+        logger.error(f"❌ Failed to set LLM provider: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat/{provider}")
+async def chat_with_specific_provider(
+    provider: str,
+    message: ChatMessage,
+    background_tasks: BackgroundTasks,
+    mcp_service: MCPServiceV2 = Depends(get_mcp_service),
+    llm_service: LLMServiceV2 = Depends(get_llm_service)
+):
+    """Chat endpoint that uses a specific LLM provider"""
+    try:
+        logger.info(f"🔮 Oracle responding with {provider} provider to: {message.message}")
+        
+        # Validate provider
+        if provider not in ["ollama", "anthropic", "gemini"]:
+            raise HTTPException(status_code=400, detail=f"Invalid provider: {provider}")
+        
+        # Use MCP-enhanced interpretation with specific provider
+        response = await llm_service.interpret_user_request_with_mcp(message.message)
+        
+        # Override provider if specified
+        if "error" not in response:
+            # Re-generate with specific provider
+            final_response = await llm_service.generate_response(
+                message.message,
+                provider=provider
+            )
+            
+            # Merge MCP enhancements
+            if "mcp_enhanced" in response:
+                final_response["mcp_enhanced"] = response["mcp_enhanced"]
+            if "mcp_prompt_used" in response:
+                final_response["mcp_prompt_used"] = response["mcp_prompt_used"]
+        else:
+            final_response = response
+        
+        # Schedule background optimizations
+        background_tasks.add_task(_optimize_mcp_cache, mcp_service)
+        
+        return ChatResponse(
+            response=final_response.get("response", ""),
+            timestamp=final_response.get("timestamp", datetime.utcnow().isoformat() + "Z"),
+            provider_used=final_response.get("provider_used", provider),
+            model_info=final_response.get("model_info", {}),
+            mcp_enhanced=final_response.get("mcp_enhanced", False)
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Chat with {provider} provider failed: {e}")
+        return ChatResponse(
+            response=f"Oracle Error with {provider}: {str(e)}",
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            error=True
+        )
+
+# Function Calling Endpoints
+@router.post("/function-call", response_model=FunctionCallResponse)
+async def function_calling_chat(request: FunctionCallRequest):
+    """Dedicated function calling endpoint with LLM-MCP integration"""
+    try:
+        # Initialize function calling service if needed
+        if not hasattr(llm_function_calling_service, '_initialized'):
+            await llm_function_calling_service.initialize()
+            llm_function_calling_service._initialized = True
+        
+        if request.conversation_id:
+            # Continue existing conversation
+            result = await llm_function_calling_service.continue_function_calling_conversation(
+                request.conversation_id,
+                request.message
+            )
+        else:
+            # Start new function calling conversation
+            result = await llm_function_calling_service.start_function_calling_conversation(
+                request.message,
+                request.provider
+            )
+        
+        return FunctionCallResponse(
+            response=result["response"],
+            conversation_id=result["conversation_id"],
+            tool_calls_made=result.get("tool_calls_made", []),
+            provider_used=result.get("provider_used", "unknown"),
+            turn=result.get("turn"),
+            timestamp=result["timestamp"]
+        )
+        
+    except Exception as e:
+        logger.error(f"Function calling endpoint failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/function-call/conversation/{conversation_id}")
+async def get_function_call_conversation(conversation_id: str):
+    """Get details about a function calling conversation"""
+    try:
+        summary = await llm_function_calling_service.get_conversation_summary(conversation_id)
+        return summary
+    except Exception as e:
+        logger.error(f"Failed to get conversation summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/function-call/tools")
+async def get_available_function_call_tools():
+    """Get documentation for available function calling tools"""
+    try:
+        if not hasattr(llm_function_calling_service, '_initialized'):
+            await llm_function_calling_service.initialize()
+            llm_function_calling_service._initialized = True
+        
+        documentation = await llm_function_calling_service.orchestrator.get_tool_documentation()
+        return {
+            "tools_documentation": documentation,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+    except Exception as e:
+        logger.error(f"Failed to get tools documentation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/function-call/stats")
+async def get_function_call_statistics():
+    """Get function calling service statistics"""
+    try:
+        stats = await llm_function_calling_service.get_service_statistics()
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get function call statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Legacy compatibility endpoints

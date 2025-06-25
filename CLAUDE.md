@@ -121,6 +121,28 @@ curl http://localhost:8000/health  # Conductor health
 - React/TypeScript with component-centric structure
 - Comprehensive testing at unit, integration, and E2E levels
 
+## LLM Provider Configuration
+
+The Oracle now supports multiple LLM providers:
+
+### Available Providers
+- **Ollama** (local): Default provider using Mistral
+- **Anthropic Claude**: Cloud provider with Claude Sonnet
+- **Google Gemini**: Cloud provider (future support)
+
+### Environment Setup
+Copy `.env.example` to `.env` and configure:
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+### Key Environment Variables
+- `DEFAULT_LLM_PROVIDER`: ollama, anthropic, or gemini
+- `ANTHROPIC_API_KEY`: Your Anthropic API key
+- `GEMINI_API_KEY`: Your Google Gemini API key
+- `OLLAMA_BASE_URL`: Ollama server URL (default: http://localhost:11434)
+
 ## User Preferences
 
 - **"Wrap it up"**: Commit all staged changes with appropriate commit message and branch creation
@@ -133,7 +155,7 @@ curl http://localhost:8000/health  # Conductor health
 
 1. User input → The Visage
 2. The Visage → The Conductor (REST API)
-3. The Conductor → The Oracle (Ollama API)
+3. The Conductor → The Oracle (Multi-LLM API: Ollama/Anthropic/Gemini)
 4. The Conductor → The Sentinel (REST API)
 5. Response flow back through the chain
 
@@ -145,7 +167,22 @@ curl http://localhost:8000/health  # Conductor health
 
 ### The Conductor
 - `POST /api/v1/chat` - Main chat endpoint
+- `POST /api/v1/chat/{provider}` - Chat with specific LLM provider
+- `GET /api/v1/llm/providers` - List available LLM providers
+- `POST /api/v1/llm/provider/{provider_name}` - Set default LLM provider
 - `GET /health` - Health check
+
+### LLM Provider Testing
+```bash
+# Test with Ollama (default)
+curl -X POST http://localhost:8000/api/v1/chat -H "Content-Type: application/json" -d '{"message": "Hello", "user_id": "test"}'
+
+# Test with specific provider (if configured)
+curl -X POST http://localhost:8000/api/v1/chat/anthropic -H "Content-Type: application/json" -d '{"message": "Hello", "user_id": "test"}'
+
+# Get available providers
+curl http://localhost:8000/api/v1/llm/providers
+```
 
 ## Future Considerations
 

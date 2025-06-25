@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import uvicorn
 
-from app.routers import interaction_router
+from app.routers import interaction_router_v2
 
 app = FastAPI(
     title="The Conductor",
-    description="Codex Umbra Backend Orchestrator",
-    version="1.0.0"
+    description="Codex Umbra Backend Orchestrator with LLM Function Calling",
+    version="2.0.0"
 )
 
 app.add_middleware(
@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(interaction_router.router)
+app.include_router(interaction_router_v2.router)
 
 @app.get("/")
 async def root():

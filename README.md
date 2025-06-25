@@ -17,14 +17,36 @@ An evolving nexus for system interaction with four interconnected components fol
 
 ## 🚀 Quick Start
 
-### Start All Services
+### Complete Setup (Recommended)
 ```bash
-./start_codex_umbra.sh
+make setup && make start
 ```
 
-### Test Basic Connectivity
+### LLM Provider Configuration
+1. **Copy environment template**: `cp .env.example .env`
+2. **Add your API keys** to `.env`:
+   - `ANTHROPIC_API_KEY` for Claude Sonnet
+   - `GEMINI_API_KEY` for Google Gemini  
+   - `DEFAULT_LLM_PROVIDER=ollama` (or anthropic/gemini)
+3. **Verify providers**: `make providers`
+
+### Available Commands
+- `make help` - Show all available commands
+- `make start/stop/restart` - Service management
+- `make test` - Quick system verification
+- `make chat` - Interactive Oracle conversation
+- `make fun` - The Oracle tells programming jokes! 🎉
+
+### Alternative Startup Methods
 ```bash
-./test_basic.sh
+# Script-based startup
+./scripts/start_codex_umbra.sh
+
+# Docker startup
+make docker-start
+
+# Test connectivity
+make test-basic
 ```
 
 ### Manual Component Startup

@@ -206,10 +206,33 @@ jobs:
         timeout 300 bash -c 'until curl -s http://localhost:8001/health; do sleep 5; done'
         timeout 300 bash -c 'until curl -s http://localhost:5173; do sleep 5; done'
 
+    - name: Setup Python for natural language tests
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Python dependencies for NL tests
+      run: |
+        pip install aiohttp asyncio
+
     - name: Run integration tests
       run: |
         chmod +x scripts/test_comprehensive_frontend.sh
         ./scripts/test_comprehensive_frontend.sh
+
+    - name: Run natural language integration tests
+      run: |
+        python test_natural_language_integration.py
+      timeout-minutes: 10
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: integration-test-results
+        path: |
+          test_results_natural_language.json
+          scripts/test_results_*.json
 
     - name: Run health checks
       run: |
