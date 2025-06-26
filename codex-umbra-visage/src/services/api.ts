@@ -1,6 +1,6 @@
 import type { ApiResponse, ApiError } from '../types';
 
-const CONDUCTOR_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const CONDUCTOR_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8090';
 
 export async function postMessageToConductor(text: string): Promise<ApiResponse> {
   try {

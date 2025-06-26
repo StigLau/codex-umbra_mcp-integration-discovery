@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class MCPImprovementTester:
     def __init__(self):
-        self.conductor_url = "http://localhost:8000"
+        self.conductor_url = "http://localhost:8090"
         self.test_results = []
         
     async def test_structured_json_responses(self, session: aiohttp.ClientSession) -> Dict[str, Any]:

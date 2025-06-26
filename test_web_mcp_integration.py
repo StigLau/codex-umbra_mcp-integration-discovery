@@ -11,7 +11,7 @@ import sys
 from typing import Dict, Any, List, Optional
 
 class CodexUmbraWebTester:
-    def __init__(self, base_url: str = "http://localhost:8000", visage_url: str = "http://localhost:5173", mcp_url: str = "http://localhost:8001"):
+    def __init__(self, base_url: str = "http://localhost:8090", visage_url: str = "http://localhost:8085", mcp_url: str = "http://localhost:8091"):
         self.base_url = base_url
         self.visage_url = visage_url
         self.mcp_url = mcp_url

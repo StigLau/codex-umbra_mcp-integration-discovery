@@ -48,7 +48,7 @@ cd mcp_server_project
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
-uvicorn mcp_server.main:mcp_app --reload --port 8001
+uvicorn mcp_server.main:mcp_app --reload --port 8091
 ```
 
 #### The Conductor (Backend)
@@ -57,7 +57,7 @@ cd conductor_project
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8090
 ```
 
 #### The Visage (Frontend)
@@ -107,8 +107,8 @@ npm run test:e2e         # End-to-end tests
 
 ### Health Checks
 ```bash
-curl http://localhost:8001/health  # Sentinel health
-curl http://localhost:8000/health  # Conductor health
+curl http://localhost:8091/health  # Sentinel health
+curl http://localhost:8090/health  # Conductor health
 ```
 
 ## Core Principles
@@ -175,13 +175,13 @@ cp .env.example .env
 ### LLM Provider Testing
 ```bash
 # Test with Ollama (default)
-curl -X POST http://localhost:8000/api/v1/chat -H "Content-Type: application/json" -d '{"message": "Hello", "user_id": "test"}'
+curl -X POST http://localhost:8090/api/v1/chat -H "Content-Type: application/json" -d '{"message": "Hello", "user_id": "test"}'
 
 # Test with specific provider (if configured)
-curl -X POST http://localhost:8000/api/v1/chat/anthropic -H "Content-Type: application/json" -d '{"message": "Hello", "user_id": "test"}'
+curl -X POST http://localhost:8090/api/v1/chat/anthropic -H "Content-Type: application/json" -d '{"message": "Hello", "user_id": "test"}'
 
 # Get available providers
-curl http://localhost:8000/api/v1/llm/providers
+curl http://localhost:8090/api/v1/llm/providers
 ```
 
 ## Future Considerations

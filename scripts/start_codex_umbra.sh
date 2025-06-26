@@ -29,25 +29,25 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # Check ports
-if ! check_port 8000; then
-    echo "❌ Port 8000 (Conductor) is in use"
+if ! check_port 8090; then
+    echo "❌ Port 8090 (Conductor) is in use"
     exit 1
 fi
 
-if ! check_port 8001; then
-    echo "❌ Port 8001 (Sentinel) is in use"
+if ! check_port 8091; then
+    echo "❌ Port 8091 (Sentinel) is in use"
     exit 1
 fi
 
-if ! check_port 5173; then
-    echo "❌ Port 5173 (Visage) is in use"
+if ! check_port 8085; then
+    echo "❌ Port 8085 (Visage) is in use"
     exit 1
 fi
 
 echo "✅ Prerequisites check passed"
 
 # Start The Sentinel (MCP Server)
-echo "🛡️  Starting The Sentinel (MCP Server) on port 8001..."
+echo "🛡️  Starting The Sentinel (MCP Server) on port 8091..."
 cd mcp_server_project
 if [ ! -d "venv" ]; then
     echo "📦 Creating virtual environment for Sentinel..."
@@ -55,7 +55,7 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 pip install -q -r requirements.txt
-uvicorn mcp_server.main:mcp_app --host 0.0.0.0 --port 8001 --reload &
+uvicorn mcp_server.main:mcp_app --host 0.0.0.0 --port 8091 --reload &
 SENTINEL_PID=$!
 cd ..
 
@@ -63,7 +63,7 @@ cd ..
 sleep 3
 
 # Start The Conductor (Backend Orchestrator)
-echo "🎯 Starting The Conductor (Backend) on port 8000..."
+echo "🎯 Starting The Conductor (Backend) on port 8090..."
 cd conductor_project
 if [ ! -d "venv" ]; then
     echo "📦 Creating virtual environment for Conductor..."
@@ -71,7 +71,7 @@ if [ ! -d "venv" ]; then
 fi
 source venv/bin/activate
 pip install -q -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload &
+uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload &
 CONDUCTOR_PID=$!
 cd ..
 
@@ -79,7 +79,7 @@ cd ..
 sleep 3
 
 # Start The Visage (Frontend)
-echo "👁️  Starting The Visage (Frontend) on port 5173..."
+echo "👁️  Starting The Visage (Frontend) on port 8085..."
 cd codex-umbra-visage
 if [ ! -d "node_modules" ]; then
     echo "📦 Installing npm dependencies..."
@@ -96,15 +96,15 @@ sleep 5
 echo ""
 echo "🎉 Codex Umbra is now running!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🛡️  The Sentinel (MCP):       http://localhost:8001"
-echo "🎯 The Conductor (Backend):  http://localhost:8000"
-echo "👁️  The Visage (Frontend):    http://localhost:5173"
+echo "🛡️  The Sentinel (MCP):       http://localhost:8091"
+echo "🎯 The Conductor (Backend):  http://localhost:8090"
+echo "👁️  The Visage (Frontend):    http://localhost:8085"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "💡 Quick test commands:"
-echo "   curl http://localhost:8001/health"
-echo "   curl http://localhost:8000/health"
-echo "   curl -X POST http://localhost:8000/api/v1/chat -H 'Content-Type: application/json' -d '{\"message\":\"status\"}'"
+echo "   curl http://localhost:8091/health"
+echo "   curl http://localhost:8090/health"
+echo "   curl -X POST http://localhost:8090/api/v1/chat -H 'Content-Type: application/json' -d '{\"message\":\"status\"}'"
 echo ""
 echo "🛑 Press Ctrl+C to stop all services"
 

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     
     # Legacy Sentinel configuration (for fallback)
-    sentinel_url: str = "http://localhost:8001"
+    sentinel_url: str = "http://localhost:8091"
     
     # LLM Provider Configuration
     default_llm_provider: str = "ollama"  # ollama, anthropic, gemini
@@ -36,12 +36,12 @@ class Settings(BaseSettings):
     
     # Service Configuration
     conductor_host: str = "0.0.0.0"
-    conductor_port: int = 8000
+    conductor_port: int = 8090
     conductor_debug: bool = False
     
     # MCP Server configuration  
     mcp_host: str = "localhost"
-    mcp_port: int = 8001
+    mcp_port: int = 8091
     mcp_websocket_url: Optional[str] = None  # Will be auto-generated if not provided
     mcp_http_url: Optional[str] = None       # Will be auto-generated if not provided
     
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     mcp_tool_suggestions: bool = True
     
     # Security & Performance
-    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    cors_origins: str = "http://localhost:8085,http://localhost:3000"
     rate_limit_requests_per_minute: int = 60
     rate_limit_burst_size: int = 10
     

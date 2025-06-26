@@ -10,8 +10,8 @@ import json
 from datetime import datetime
 
 # Test configuration
-CONDUCTOR_URL = "http://localhost:8000"
-SENTINEL_URL = "http://localhost:8001"
+CONDUCTOR_URL = "http://localhost:8090"
+SENTINEL_URL = "http://localhost:8091"
 
 async def test_sentinel_health():
     """Test The Sentinel health endpoint"""

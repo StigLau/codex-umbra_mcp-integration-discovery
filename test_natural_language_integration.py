@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 class CodexUmbraTestSuite:
     def __init__(self):
-        self.conductor_url = "http://localhost:8000"
-        self.sentinel_url = "http://localhost:8001"
-        self.frontend_url = "http://localhost:5173"
+        self.conductor_url = "http://localhost:8090"
+        self.sentinel_url = "http://localhost:8091"
+        self.frontend_url = "http://localhost:8085"
         self.results = []
         
     async def check_service_health(self, session: aiohttp.ClientSession) -> Dict[str, bool]:
